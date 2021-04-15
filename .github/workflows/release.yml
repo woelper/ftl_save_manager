@@ -43,10 +43,6 @@ jobs:
       with:
           toolchain: nightly
           override: true
-
-    - name: Install cargo cross
-      run: cargo install cross
-      if: matrix.os == 'ubuntu-18.04'
   
     - name: Build Application
       run: cargo build --release
