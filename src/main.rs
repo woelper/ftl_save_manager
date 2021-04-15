@@ -41,22 +41,31 @@ fn backup() {
 
 fn main() {
     dbg!(get_save_directory());
-    let system = support::init(file!());
+    let mut dimensions = (500,700);
+    let mut system = support::init(file!(), dimensions);
 
     let mut savegames = get_available_saves();
     let mut save_name: ImString = im_str!("{}", "unnamed");
 
+    system.imgui.style_mut().window_border_size = 0.0;
+    
     system.main_loop(move |_, ui| {
+
+        let s = ui.io().display_size;
+        dimensions.0 = s[0] as u32;
+        dimensions.1 = s[1] as u32;
         Window::new(im_str!("Savegames"))
-            .size([300.0, 110.0], Condition::FirstUseEver)
+        .position([0.0, 0.0], Condition::FirstUseEver)
+        .movable(false)
+        .no_decoration()
+        .size([dimensions.0 as f32, dimensions.1 as f32], Condition::Always)
             .build(ui, || {
                 ui.text(im_str!("Available savegames"));
                 ui.separator();
 
                 for savegame in &savegames {
 
-                    if 
-                    ui.button(
+                    if ui.button(
                         &im_str!(
                             "Restore {}",
                             savegame.file_name().unwrap_or_default().to_string_lossy()
@@ -67,11 +76,9 @@ fn main() {
                         let _ = copy(savegame, get_save_file());
                     }
                 }
-            });
 
-        Window::new(im_str!("Save active game"))
-            .size([300.0, 210.0], Condition::FirstUseEver)
-            .build(ui, || {
+                ui.separator();
+
                 ui.input_text(im_str!("Save name"), &mut save_name).build();
 
                 if ui.button(&im_str!("Save {}", save_name), [0., 0.]) {
@@ -86,5 +93,6 @@ fn main() {
                     }
                 }
             });
+
     });
 }
