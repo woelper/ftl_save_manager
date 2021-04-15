@@ -1,5 +1,5 @@
 [package]
-name = "ftl_save_manager"
+name = "ftlsavemanager"
 version = "0.1.0"
 edition = "2018"
 
