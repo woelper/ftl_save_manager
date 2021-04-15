@@ -42,7 +42,7 @@ fn backup() {
 fn main() {
     dbg!(get_save_directory());
     let mut dimensions = (500,700);
-    let mut system = support::init(file!(), dimensions);
+    let mut system = support::init("FLL saves", dimensions);
 
     let mut savegames = get_available_saves();
     let mut save_name: ImString = im_str!("{}", "unnamed");
