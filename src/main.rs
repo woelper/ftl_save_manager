@@ -1,8 +1,5 @@
 use imgui::*;
-use serde::{Deserialize, Serialize};
-use serde_json;
-use std::path::Path;
-use std::{fs::copy, fs::File, path::PathBuf};
+use std::{fs::copy, path::PathBuf};
 
 mod support;
 
@@ -36,12 +33,18 @@ fn get_available_saves() -> Vec<PathBuf> {
         .collect()
 }
 
+/// Creates backup copy of continue.sav
+fn backup() {
+    let _ = copy(get_save_file(), get_save_directory().join("backup.sav"));
+}
+
+
 fn main() {
     dbg!(get_save_directory());
     let system = support::init(file!());
 
     let mut savegames = get_available_saves();
-    let mut save_name: ImString = im_str!("{}", "My savegame");
+    let mut save_name: ImString = im_str!("{}", "unnamed");
 
     system.main_loop(move |_, ui| {
         Window::new(im_str!("Savegames"))
@@ -51,18 +54,23 @@ fn main() {
                 ui.separator();
 
                 for savegame in &savegames {
+
+                    if 
                     ui.button(
                         &im_str!(
                             "Restore {}",
                             savegame.file_name().unwrap_or_default().to_string_lossy()
                         ),
                         [0., 0.],
-                    );
+                    ) {
+                        backup();
+                        let _ = copy(savegame, get_save_file());
+                    }
                 }
             });
 
         Window::new(im_str!("Save active game"))
-            .size([300.0, 110.0], Condition::FirstUseEver)
+            .size([300.0, 210.0], Condition::FirstUseEver)
             .build(ui, || {
                 ui.input_text(im_str!("Save name"), &mut save_name).build();
 
