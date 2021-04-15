@@ -1,4 +1,4 @@
-# ftl_save_manager
+# FTL save manager
 
 Well, I copied `continue.sav` long enough manually, I guess.
 
