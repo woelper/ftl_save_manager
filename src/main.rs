@@ -11,11 +11,11 @@ fn get_save_directory() -> PathBuf {
     }
     #[cfg(target_os = "windows")]
     {
-        dirs::data_dir().unwrap_or_default().join("FasterThanLight")
+        dirs::document_dir().unwrap_or_default().join("My Games").join("FasterThanLight")
     }
     #[cfg(target_os = "macos")]
     {
-        dirs::data_dir().unwrap_or_default().join("FasterThanLight")
+        dirs::config_dir().unwrap_or_default().join("FasterThanLight")
     }
 }
 
