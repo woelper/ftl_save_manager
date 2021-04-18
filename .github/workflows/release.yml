@@ -44,8 +44,20 @@ jobs:
           toolchain: nightly
           override: true
   
+    - name: Install cargo bundle
+      run: cargo install cargo-bundle
+      if: matrix.os == 'macOS-latest'
+
     - name: Build Application
       run: cargo build --release
+
+    - name: Build Mac Bundle
+      run: cargo bundle --release
+      if: matrix.os == 'macOS-latest'
+
+    - name: Zip Mac Bundle
+      run: mv target/release/bundle/osx/ftlsavemanager.app . && zip -r ftlsavemanager_app.zip ftlsavemanager.app
+      if: matrix.os == 'macOS-latest'
 
     - name: Upload Linux Release
       if: matrix.os == 'ubuntu-18.04'
@@ -62,6 +74,18 @@ jobs:
     - name: Upload Mac Release
       if: matrix.os == 'macOS-latest'
       id: upload-release-asset-mac
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.release_job.outputs.upload_url }}
+        asset_path: ftlsavemanager_app.zip
+        asset_name: ftlsavemanager_mac.zip
+        asset_content_type: application/zip
+
+    - name: Upload Mac Bin
+      if: matrix.os == 'macOS-latest'
+      id: upload-release-asset-macbin
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
