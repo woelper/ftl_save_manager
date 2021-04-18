@@ -1,8 +1,12 @@
 [package]
 name = "ftlsavemanager"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2018"
 description = "Manage FTL save games"
+
+
+[package.metadata.bundle]
+identifier = "com.github.woelper.ftlsavemanager"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -19,7 +23,3 @@ rustflags = ["-C", "target-feature=+crt-static"]
 
 [target.i686-pc-windows-msvc]
 rustflags = ["-C", "target-feature=+crt-static"]
-
-
-[package.metadata.bundle]
-identifier = "com.github.woelper.ftlsavemanager"
