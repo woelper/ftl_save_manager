@@ -1,4 +1,3 @@
-extern crate static_vcruntime;
 use imgui::StyleColor::*;
 use imgui::*;
 use std::{fs::copy, fs::remove_file, path::PathBuf};
