@@ -77,7 +77,7 @@ fn main() {
                         ui.text(im_str!("Enter a name to save the current game."));
                         ui.text(im_str!("This can be done at any time."));
 
-                        ui.input_text(im_str!("Save name"), &mut save_name).build();
+                        ui.input_text(im_str!("Save name"), &mut save_name).resize_buffer(true).build();
 
                         if ui.button(&im_str!("Save \"{}\"", save_name), [-1., 0.]) {
                             match copy(
