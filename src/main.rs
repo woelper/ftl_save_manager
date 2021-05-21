@@ -1,3 +1,5 @@
+#![windows_subsystem = "windows"]
+
 use imgui::StyleColor::*;
 use imgui::*;
 use std::{fs::copy, fs::remove_file, path::PathBuf, sync::mpsc::{self, Receiver, Sender}};

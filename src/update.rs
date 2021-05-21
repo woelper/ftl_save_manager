@@ -2,7 +2,8 @@ use self_update::{Status, cargo_crate_version};
 use std::{sync::mpsc::Sender, thread};
 
 fn gh_update() -> Result<Status, Box<dyn std::error::Error>> {
-    let target = "";
+    #[cfg(target_os = "windows")]
+    let mut target = "";
     #[cfg(target_os = "linux")]
     let target = "_linux";
     #[cfg(target_os = "macos")]
@@ -32,7 +33,8 @@ pub fn update(sender: Sender<String>) {
             let _ = sender.send(msg);
         }
         Err(e) => {
-            let _ = sender.send(format!("{:?}", e));
+            eprintln!("Update error{:?}", e);
+            let _ = sender.send(format!("Can't check for a new version."));
         }
     });
 }
