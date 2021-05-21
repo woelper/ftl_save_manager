@@ -1,9 +1,9 @@
 use imgui::StyleColor::*;
 use imgui::*;
-use std::{fs::copy, fs::remove_file, path::PathBuf};
+use std::{fs::copy, fs::remove_file, path::PathBuf, sync::mpsc::{self, Receiver, Sender}};
 mod support;
 use std::ffi::OsStr;
-
+mod update;
 
 /// Get the FTL save directory for all platforms
 fn get_save_directory() -> PathBuf {
@@ -46,7 +46,10 @@ fn backup() {
 }
 
 fn main() {
-    dbg!(get_save_directory());
+    let (update_sender, update_receiver): (Sender<String>, Receiver<String>) = mpsc::channel();
+
+    update::update(update_sender);
+
     let mut dimensions = (500, 700);
     let mut system = support::init("FTL saves", dimensions);
 
@@ -64,6 +67,13 @@ fn main() {
     system.imgui.style_mut().colors[WindowBg as usize] = [0.2, 0.2, 0.2, 1.0];
 
     system.main_loop(move |_, ui| {
+
+
+        if let Ok(msg) = update_receiver.try_recv() {
+            message = msg;
+        }
+
+
         let s = ui.io().display_size;
         dimensions.0 = s[0] as u32;
         dimensions.1 = s[1] as u32;
