@@ -2,6 +2,8 @@ use imgui::StyleColor::*;
 use imgui::*;
 use std::{fs::copy, fs::remove_file, path::PathBuf};
 mod support;
+use std::ffi::OsStr;
+
 
 /// Get the FTL save directory for all platforms
 fn get_save_directory() -> PathBuf {
@@ -50,6 +52,8 @@ fn main() {
 
     let mut savegames = get_available_saves();
     let mut save_name: ImString = im_str!("{}", "unnamed");
+    // let mut message: ImString = im_str!("{}", "welcome");
+    let mut message= "".to_string();
 
     system.imgui.style_mut().window_border_size = 0.0;
     let col_main = [0.2, 0.5, 0.8, 1.0];
@@ -80,21 +84,30 @@ fn main() {
                         ui.input_text(im_str!("Save name"), &mut save_name).resize_buffer(true).build();
 
                         if ui.button(&im_str!("Save \"{}\"", save_name), [-1., 0.]) {
+                            let savegame = get_save_directory()
+                            .join(save_name.to_string())
+                            .with_extension("msav");
                             match copy(
                                 get_save_file(),
-                                get_save_directory()
-                                    .join(save_name.to_string())
-                                    .with_extension("msav"),
+                                &savegame,
                             ) {
-                                Ok(_) => savegames = get_available_saves(),
-                                Err(e) => eprintln!("{:?}", e),
+                                Ok(_) => {
+                                    message = format!("Saved {} successfully.", savegame.file_name().unwrap_or(OsStr::new("")).to_string_lossy());
+                                    savegames = get_available_saves()},
+                                Err(e) => message = format!("Could not save: {}", e),
                             }
                         }
+
+                        ui.text(&im_str!("{}", message));
 
                         ui.dummy([0., 60.]);
                         ui.text(im_str!(
                             "Select a game to load. Make sure the game is closed."
                         ));
+
+                        if savegames.is_empty() {
+                            ui.text("There are no savegames yet. Please save one!");
+                        }
 
                         for savegame in &savegames.clone() {
                             if ui.button(
@@ -110,7 +123,9 @@ fn main() {
                             ui.same_line(0.0);
 
                             if ui.button(&im_str!("DEL##{:?}", savegame), [40., 0.]) {
-                                let _ = remove_file(savegame).unwrap();
+                                if remove_file(savegame).is_ok() {
+                                    message = format!("Removed {}.", savegame.file_name().unwrap_or(OsStr::new("")).to_string_lossy());
+                                }
                                 savegames = get_available_saves();
                             }
                         }
