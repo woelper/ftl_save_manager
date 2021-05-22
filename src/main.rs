@@ -2,9 +2,18 @@
 
 use imgui::StyleColor::*;
 use imgui::*;
-use std::{fs::copy, fs::remove_file, path::PathBuf, sync::mpsc::{self, Receiver, Sender}};
+use std::{
+    fs::copy,
+    fs::remove_file,
+    io::Read,
+    path::{Path, PathBuf},
+    sync::mpsc::{self, Receiver, Sender},
+    time::SystemTime,
+};
 mod support;
+use anyhow::{Error, Result};
 use std::ffi::OsStr;
+mod ftldata;
 mod update;
 
 /// Get the FTL save directory for all platforms
@@ -33,13 +42,37 @@ fn get_save_file() -> PathBuf {
     get_save_directory().join("continue.sav")
 }
 
+/// Get the FTL save file
+fn get_save_info(filepath: &PathBuf) -> Result<String> {
+    let mut file = std::fs::File::open(&filepath)?;
+    let mut buf = vec![];
+
+    file.read_to_end(&mut buf)?;
+    let decoded: ftldata::Header = bincode::deserialize(&buf)?;
+    Ok(format!("{:?}", decoded))
+}
+
+/// Get modification time
+fn get_mtime(p: &Path) -> SystemTime {
+    if let Ok(meta) = p.metadata() {
+        if let Ok(modified) = meta.modified() {
+            return modified;
+        }
+    }
+    SystemTime::now()
+}
+
+/// List available savegames
 fn get_available_saves() -> Vec<PathBuf> {
-    std::fs::read_dir(get_save_directory())
+    let mut s: Vec<PathBuf> = std::fs::read_dir(get_save_directory())
         .unwrap()
         .filter_map(|e| e.ok())
         .map(|f| f.path().to_path_buf())
         .filter(|f| f.extension() == Some(std::ffi::OsStr::new("msav")))
-        .collect()
+        .collect();
+    // sort files by modification time
+    s.sort_by(|a, b| get_mtime(b).cmp(&get_mtime(a)));
+    s
 }
 
 /// Creates backup copy of continue.sav
@@ -58,7 +91,7 @@ fn main() {
     let mut savegames = get_available_saves();
     let mut save_name: ImString = im_str!("{}", "unnamed");
     // let mut message: ImString = im_str!("{}", "welcome");
-    let mut message= "".to_string();
+    let mut message = "".to_string();
 
     system.imgui.style_mut().window_border_size = 0.0;
     let col_main = [0.2, 0.5, 0.8, 1.0];
@@ -69,12 +102,9 @@ fn main() {
     system.imgui.style_mut().colors[WindowBg as usize] = [0.2, 0.2, 0.2, 1.0];
 
     system.main_loop(move |_, ui| {
-
-
         if let Ok(msg) = update_receiver.try_recv() {
             message = msg;
         }
-
 
         let s = ui.io().display_size;
         dimensions.0 = s[0] as u32;
@@ -93,19 +123,25 @@ fn main() {
                         ui.text(im_str!("Enter a name to save the current game."));
                         ui.text(im_str!("This can be done at any time."));
 
-                        ui.input_text(im_str!("Save name"), &mut save_name).resize_buffer(true).build();
+                        ui.input_text(im_str!("Save name"), &mut save_name)
+                            .resize_buffer(true)
+                            .build();
 
                         if ui.button(&im_str!("Save \"{}\"", save_name), [-1., 0.]) {
                             let savegame = get_save_directory()
-                            .join(save_name.to_string())
-                            .with_extension("msav");
-                            match copy(
-                                get_save_file(),
-                                &savegame,
-                            ) {
+                                .join(save_name.to_string())
+                                .with_extension("msav");
+                            match copy(get_save_file(), &savegame) {
                                 Ok(_) => {
-                                    message = format!("Saved {} successfully.", savegame.file_name().unwrap_or(OsStr::new("")).to_string_lossy());
-                                    savegames = get_available_saves()},
+                                    message = format!(
+                                        "Saved {} successfully.",
+                                        savegame
+                                            .file_name()
+                                            .unwrap_or(OsStr::new(""))
+                                            .to_string_lossy()
+                                    );
+                                    savegames = get_available_saves()
+                                }
                                 Err(e) => message = format!("Could not save: {}", e),
                             }
                         }
@@ -132,11 +168,26 @@ fn main() {
                                 backup();
                                 let _ = copy(savegame, get_save_file());
                             }
+
+                            // if ui.button(
+                            //     im_str!("info"),
+                            //     [0., 0.],
+                            // ) {
+                            //     dbg!(savegame);
+                            //     dbg!(get_save_info(savegame));
+                            // }
+
                             ui.same_line(0.0);
 
                             if ui.button(&im_str!("DEL##{:?}", savegame), [40., 0.]) {
                                 if remove_file(savegame).is_ok() {
-                                    message = format!("Removed {}.", savegame.file_name().unwrap_or(OsStr::new("")).to_string_lossy());
+                                    message = format!(
+                                        "Removed {}.",
+                                        savegame
+                                            .file_name()
+                                            .unwrap_or(OsStr::new(""))
+                                            .to_string_lossy()
+                                    );
                                 }
                                 savegames = get_available_saves();
                             }

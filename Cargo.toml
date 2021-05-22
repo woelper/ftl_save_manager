@@ -18,7 +18,9 @@ imgui = "0.7"
 imgui-glium-renderer = "0.7"
 imgui-winit-support = "0.7"
 self_update = "0.27.0"
-
+serde = { version = "1.0", features = ["derive"] }
+bincode = "*"
+anyhow = "*"
 
 [target.x86_64-pc-windows-msvc]
 rustflags = ["-C", "target-feature=+crt-static"]

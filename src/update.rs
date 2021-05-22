@@ -1,4 +1,4 @@
-use self_update::{Status, cargo_crate_version};
+use self_update::{cargo_crate_version, Status};
 use std::{sync::mpsc::Sender, thread};
 
 fn gh_update() -> Result<Status, Box<dyn std::error::Error>> {
@@ -25,10 +25,14 @@ fn gh_update() -> Result<Status, Box<dyn std::error::Error>> {
 pub fn update(sender: Sender<String>) {
     thread::spawn(move || match gh_update() {
         Ok(s) => {
-            let msg = 
-            match s {
-                Status::UpToDate(ver) => format!("Welcome! You are running the latest version: {}", ver),
-                Status::Updated(ver) => format!("Welcome! You have been updated to: {}, please restart!", ver),
+            let msg = match s {
+                Status::UpToDate(ver) => {
+                    format!("Welcome! You are running the latest version: {}", ver)
+                }
+                Status::Updated(ver) => format!(
+                    "Welcome! You have been updated to: {}, please restart!",
+                    ver
+                ),
             };
             let _ = sender.send(msg);
         }
