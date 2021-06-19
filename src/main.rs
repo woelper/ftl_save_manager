@@ -45,10 +45,18 @@ fn get_save_file() -> PathBuf {
 /// Get the FTL save file
 fn get_save_info(filepath: &PathBuf) -> Result<String> {
     let mut file = std::fs::File::open(&filepath)?;
-    let mut buf = vec![];
+    // let mut buf = vec![];
 
-    file.read_to_end(&mut buf)?;
-    let decoded: ftldata::Header = bincode::deserialize(&buf)?;
+    // file.read_to_end(&mut buf)?;
+
+    use bincode::Options;
+    let my_options = bincode::DefaultOptions::new()
+        .with_fixint_encoding()
+        .allow_trailing_bytes();
+
+    let decoded: ftldata::Sav = my_options.deserialize_from(file)?;
+
+    // let decoded: ftldata::Sav = bincode::deserialize(&buf)?;
     Ok(format!("{:?}", decoded))
 }
 
@@ -169,13 +177,15 @@ fn main() {
                                 let _ = copy(savegame, get_save_file());
                             }
 
-                            // if ui.button(
-                            //     im_str!("info"),
-                            //     [0., 0.],
-                            // ) {
-                            //     dbg!(savegame);
-                            //     dbg!(get_save_info(savegame));
-                            // }
+                            if ui.is_item_hovered() {
+                                ui.tooltip(|| {
+                                    if let Ok(save) = ftldata::get_save_info(savegame) {
+                                        ui.text(&im_str!("{}", save));
+                                        //ui.text(&im_str!("{}", savegame.));
+                                        
+                                    }
+                                });
+                            }
 
                             ui.same_line(0.0);
 

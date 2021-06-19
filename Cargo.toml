@@ -21,6 +21,8 @@ self_update = "0.27.0"
 serde = { version = "1.0", features = ["derive"] }
 bincode = "*"
 anyhow = "*"
+positioned-io = "*"
+byteorder = "*"
 
 [target.x86_64-pc-windows-msvc]
 rustflags = ["-C", "target-feature=+crt-static"]
