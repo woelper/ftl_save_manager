@@ -1,5 +1,7 @@
 #![windows_subsystem = "windows"]
 
+use chrono::DateTime;
+use chrono::Local;
 use imgui::StyleColor::*;
 use imgui::*;
 use std::{
@@ -15,6 +17,20 @@ use anyhow::{Error, Result};
 use std::ffi::OsStr;
 mod ftldata;
 mod update;
+
+#[derive(Clone, Debug)]
+
+struct SaveGame {
+    path: PathBuf,
+    mtime: SystemTime
+}
+
+impl SaveGame {
+    fn age(&self) -> String {
+        let mtime: DateTime<Local> = self.mtime.into();
+        chrono_humanize::HumanTime::from(mtime).to_string()
+    }
+}
 
 /// Get the FTL save directory for all platforms
 fn get_save_directory() -> PathBuf {
@@ -71,15 +87,19 @@ fn get_mtime(p: &Path) -> SystemTime {
 }
 
 /// List available savegames
-fn get_available_saves() -> Vec<PathBuf> {
-    let mut s: Vec<PathBuf> = std::fs::read_dir(get_save_directory())
+fn get_available_saves() -> Vec<SaveGame> {
+    let mut s: Vec<SaveGame> = std::fs::read_dir(get_save_directory())
         .unwrap()
         .filter_map(|e| e.ok())
         .map(|f| f.path().to_path_buf())
         .filter(|f| f.extension() == Some(std::ffi::OsStr::new("msav")))
+        .map(|path| SaveGame {
+            mtime: get_mtime(&path),
+            path,
+        })
         .collect();
     // sort files by modification time
-    s.sort_by(|a, b| get_mtime(b).cmp(&get_mtime(a)));
+    s.sort_by(|a, b| b.mtime.cmp(&a.mtime));
     s
 }
 
@@ -169,18 +189,19 @@ fn main() {
                             if ui.button(
                                 &im_str!(
                                     "Restore {}",
-                                    savegame.file_name().unwrap_or_default().to_string_lossy()
+                                    savegame.path.file_name().unwrap_or_default().to_string_lossy()
                                 ),
                                 [dimensions.0 as f32 - 60., 0.],
                             ) {
                                 backup();
-                                let _ = copy(savegame, get_save_file());
+                                let _ = copy(&savegame.path, get_save_file());
                             }
 
                             if ui.is_item_hovered() {
                                 ui.tooltip(|| {
-                                    if let Ok(save) = ftldata::get_save_info(savegame) {
+                                    if let Ok(save) = ftldata::get_save_info(&savegame.path) {
                                         ui.text(&im_str!("{}", save));
+                                        ui.text(&im_str!("{}", savegame.age()));
                                         //ui.text(&im_str!("{}", savegame.));
                                         
                                     }
@@ -189,11 +210,11 @@ fn main() {
 
                             ui.same_line(0.0);
 
-                            if ui.button(&im_str!("DEL##{:?}", savegame), [40., 0.]) {
-                                if remove_file(savegame).is_ok() {
+                            if ui.button(&im_str!("DEL##{:?}", savegame.path), [40., 0.]) {
+                                if remove_file(&savegame.path).is_ok() {
                                     message = format!(
                                         "Removed {}.",
-                                        savegame
+                                        savegame.path
                                             .file_name()
                                             .unwrap_or(OsStr::new(""))
                                             .to_string_lossy()
