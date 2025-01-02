@@ -25,6 +25,7 @@ positioned-io = "0.2.2"
 byteorder = "1.4.3"
 chrono-humanize = "0.2.1"
 chrono = "0.4.19"
+open = "5.3.1"
 
 [target.x86_64-pc-windows-msvc]
 rustflags = ["-C", "target-feature=+crt-static"]

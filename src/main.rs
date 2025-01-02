@@ -1,5 +1,6 @@
 #![windows_subsystem = "windows"]
 
+use anyhow::Context;
 use chrono::DateTime;
 use chrono::Local;
 use imgui::StyleColor::*;
@@ -22,7 +23,7 @@ mod update;
 
 struct SaveGame {
     path: PathBuf,
-    mtime: SystemTime
+    mtime: SystemTime,
 }
 
 impl SaveGame {
@@ -33,29 +34,30 @@ impl SaveGame {
 }
 
 /// Get the FTL save directory for all platforms
-fn get_save_directory() -> PathBuf {
+fn get_save_directory() -> Result<PathBuf> {
     #[cfg(target_os = "linux")]
     {
-        dirs::data_dir().unwrap_or_default().join("FasterThanLight")
+        Ok(dirs::data_dir().unwrap_or_default().join("FasterThanLight"))
     }
     #[cfg(target_os = "windows")]
     {
-        dirs::document_dir()
+        Ok(dirs::document_dir()
             .unwrap_or_default()
             .join("My Games")
-            .join("FasterThanLight")
+            .join("FasterThanLight"))
     }
     #[cfg(target_os = "macos")]
     {
-        dirs::config_dir()
-            .unwrap_or_default()
+        Ok(dirs::config_dir()
+            .context("Can't get config dir")?
             .join("FasterThanLight")
+            .canonicalize()?)
     }
 }
 
 /// Get the FTL save file
-fn get_save_file() -> PathBuf {
-    get_save_directory().join("continue.sav")
+fn get_save_file() -> Result<PathBuf> {
+    Ok(get_save_directory()?.join("continue.sav"))
 }
 
 /// Get the FTL save file
@@ -87,9 +89,8 @@ fn get_mtime(p: &Path) -> SystemTime {
 }
 
 /// List available savegames
-fn get_available_saves() -> Vec<SaveGame> {
-    let mut s: Vec<SaveGame> = std::fs::read_dir(get_save_directory())
-        .unwrap()
+fn get_available_saves() -> Result<Vec<SaveGame>> {
+    let mut s: Vec<SaveGame> = std::fs::read_dir(get_save_directory()?)?
         .filter_map(|e| e.ok())
         .map(|f| f.path().to_path_buf())
         .filter(|f| f.extension() == Some(std::ffi::OsStr::new("msav")))
@@ -100,12 +101,13 @@ fn get_available_saves() -> Vec<SaveGame> {
         .collect();
     // sort files by modification time
     s.sort_by(|a, b| b.mtime.cmp(&a.mtime));
-    s
+    Ok(s)
 }
 
 /// Creates backup copy of continue.sav
-fn backup() {
-    let _ = copy(get_save_file(), get_save_directory().join("backup.sav"));
+fn backup() -> Result<()> {
+    let _ = copy(get_save_file()?, get_save_directory()?.join("backup.sav"));
+    Ok(())
 }
 
 fn main() {
@@ -116,7 +118,8 @@ fn main() {
     let mut dimensions = (500, 700);
     let mut system = support::init("FTL saves", dimensions);
 
-    let mut savegames = get_available_saves();
+    let mut savegames = get_available_saves().unwrap_or_default();
+
     let mut save_name: ImString = im_str!("{}", "unnamed");
     // let mut message: ImString = im_str!("{}", "welcome");
     let mut message = "".to_string();
@@ -156,21 +159,25 @@ fn main() {
                             .build();
 
                         if ui.button(&im_str!("Save \"{}\"", save_name), [-1., 0.]) {
-                            let savegame = get_save_directory()
-                                .join(save_name.to_string())
-                                .with_extension("msav");
-                            match copy(get_save_file(), &savegame) {
-                                Ok(_) => {
-                                    message = format!(
-                                        "Saved {} successfully.",
-                                        savegame
-                                            .file_name()
-                                            .unwrap_or(OsStr::new(""))
-                                            .to_string_lossy()
-                                    );
-                                    savegames = get_available_saves()
+                            if let Ok(savegame) = get_save_directory() {
+                                let savegame =
+                                    savegame.join(save_name.to_string()).with_extension("msav");
+
+                                if let Ok(savefile) = get_save_file() {
+                                    match copy(savefile, &savegame) {
+                                        Ok(_) => {
+                                            message = format!(
+                                                "Saved {} successfully.",
+                                                savegame
+                                                    .file_name()
+                                                    .unwrap_or(OsStr::new(""))
+                                                    .to_string_lossy()
+                                            );
+                                            savegames = get_available_saves().unwrap_or_default()
+                                        }
+                                        Err(e) => message = format!("Could not save: {}", e),
+                                    }
                                 }
-                                Err(e) => message = format!("Could not save: {}", e),
                             }
                         }
 
@@ -189,12 +196,16 @@ fn main() {
                             if ui.button(
                                 &im_str!(
                                     "Restore {}",
-                                    savegame.path.file_name().unwrap_or_default().to_string_lossy()
+                                    savegame
+                                        .path
+                                        .file_name()
+                                        .unwrap_or_default()
+                                        .to_string_lossy()
                                 ),
                                 [dimensions.0 as f32 - 60., 0.],
                             ) {
-                                backup();
-                                let _ = copy(&savegame.path, get_save_file());
+                                _ = backup();
+                                let _ = copy(&savegame.path, get_save_file().unwrap_or_default());
                             }
 
                             if ui.is_item_hovered() {
@@ -203,7 +214,6 @@ fn main() {
                                         ui.text(&im_str!("{}", save));
                                         ui.text(&im_str!("{}", savegame.age()));
                                         //ui.text(&im_str!("{}", savegame.));
-                                        
                                     }
                                 });
                             }
@@ -214,18 +224,26 @@ fn main() {
                                 if remove_file(&savegame.path).is_ok() {
                                     message = format!(
                                         "Removed {}.",
-                                        savegame.path
+                                        savegame
+                                            .path
                                             .file_name()
                                             .unwrap_or(OsStr::new(""))
                                             .to_string_lossy()
                                     );
                                 }
-                                savegames = get_available_saves();
+                                savegames = get_available_saves().unwrap_or_default();
                             }
                         }
                     });
-                    TabItem::new(im_str!("Settings")).build(&ui, || {
+                    TabItem::new(im_str!("Options")).build(&ui, || {
                         ui.text(im_str!("Nothing here yet..."));
+                        if ui.button(im_str!("Open save dir"), [-1.,0.]) {
+
+                            if let Ok(d) = get_save_directory() {
+                                _ = open::that(d);
+
+                            }
+                        }
                     });
                 });
             });

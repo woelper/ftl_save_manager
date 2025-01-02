@@ -1,6 +1,6 @@
 use anyhow::{Error, Result};
 
-use byteorder::{ByteOrder, LittleEndian,ReadBytesExt};
+use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 use positioned_io::{self, ReadAt};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -30,7 +30,7 @@ pub fn get_save_info(filepath: &PathBuf) -> Result<String> {
     let mut buf = vec![0; 4];
     // 32 is where the length of the ship string is stored
     file.read_exact_at(32, &mut buf)?;
-    let ship_len:i32 = LittleEndian::read_i32(&buf);
+    let ship_len: i32 = LittleEndian::read_i32(&buf);
 
     let mut buf = vec![0; ship_len as usize];
     file.read_exact_at(36, &mut buf)?;
