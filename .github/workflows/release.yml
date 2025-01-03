@@ -11,7 +11,7 @@ env:
 jobs:
   release_job:
     name: Create release
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
       release_id: ${{ steps.create_release.outputs.id }}
@@ -34,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-18.04, windows-latest, macOS-latest]
+        os: [ubuntu-latest, windows-latest, macOS-latest]
         rust: [stable]
     steps:
     - uses: actions/checkout@v2
@@ -60,7 +60,7 @@ jobs:
       if: matrix.os == 'macOS-latest'
 
     - name: Upload Linux Release
-      if: matrix.os == 'ubuntu-18.04'
+      if: matrix.os == 'ubuntu-latest'
       id: upload-release-asset-lin 
       uses: actions/upload-release-asset@v1
       env:
@@ -110,7 +110,7 @@ jobs:
   publish_release:
     name: Publish release
     needs: [build_job, release_job]
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
     - name: Test id
       run: echo "${{ needs.release_job.outputs.release_id }}"
